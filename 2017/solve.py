@@ -473,6 +473,44 @@ class Puzzle10(Puzzle):
         return str(knot)
 
 
+class HexGrid(object):
+    """ Hexagonal Coordinate System can easily be represented as a cube coordinate system """
+    direction_mapping = {
+        'n':  (0, 1, -1), 's':  (0,  -1, 1),
+        'ne': (1, 0, -1), 'sw': (-1, 0,  1),
+        'nw': (-1, 1, 0), 'se': (1, -1,  0)
+    }
+
+    def __init__(self):
+        self.x, self.y, self.z = 0, 0, 0
+        self.furthest = 0
+
+    def move(self, direction):
+        """ Each time you move, calculate if this is the furthest we've been from the origin """
+        dx, dy, dz = self.direction_mapping[direction]
+        self.x, self.y, self.z = self.x + dx, self.y + dy, self.z + dz
+        self.furthest = max(self.furthest, self.distance_from_origin())
+
+    def distance_from_origin(self):
+        """ In a cube coordinate system, the distance between two points are the difference between coords div by 2 """
+        return (abs(self.x) + abs(self.y) + abs(self.z)) // 2
+
+
+class Puzzle11(Puzzle):
+    """ Day 11: Hex Ed """
+    @staticmethod
+    def travel(data):
+        hex_grid = HexGrid()
+        for direction in data.split(','):
+            hex_grid.move(direction)
+        return hex_grid
+
+    def solveA(self, data):
+        return self.travel(data).distance_from_origin()
+
+    def solveB(self, data):
+        return self.travel(data).furthest
+
 '''
 class PuzzleN(Puzzle):
     """ Day N: Name """
