@@ -334,8 +334,148 @@ class Puzzle08(Puzzle):
         return max_value
 
 
+class Stream(object):
+    """
+    A stream is composed of Ignored, Garbage and Group items.
+    Pop the first item off the stream, determine how it should be handled, and create a recursive tree of
+    the items.
+    Calculate the score and size by determining which subclass the scoring and size methods are being run in.
+    """
+    def __init__(self):
+        self.contents = []
+        self.ignored = []
+        self.score = 0
+
+    def process(self, data):
+        assert data.popleft() == '{'
+        self.contents.append(Group(data))
+
+    @property
+    def total_score(self):
+        return self.score + sum(content.total_score for content in self.contents if isinstance(content, Group))
+
+    @property
+    def size(self):
+        if isinstance(self, Garbage):
+            return len(self.contents) + sum(content.size for content in self.contents if isinstance(content, (Group, Garbage)))
+        else:
+            return sum(content.size for content in self.contents if isinstance(content, (Group, Garbage)))
+
+
+class Ignored(Stream):
+    def __init__(self, data):
+        super().__init__()
+        self.contents.append(data.popleft())
+
+
+class Garbage(Stream):
+    def __init__(self, data):
+        super().__init__()
+        while True:
+            value = data.popleft()
+            if value == '!':
+                self.ignored.append(Ignored(data))
+            elif value == '>':
+                break
+            else:
+                self.contents.append(value)
+
+
+class Group(Stream):
+    def __init__(self, data, score=1):
+        super().__init__()
+        self.score = score
+
+        while True:
+            value = data.popleft()
+            if value == '{':
+                self.contents.append(Group(data, self.score + 1))
+            elif value == '<':
+                self.contents.append(Garbage(data))
+            elif value == '}':
+                break
+            else:
+                self.contents.append(value)
+
+
+class Puzzle09(Puzzle):
+    """ Day 9: Stream Processing """
+    @staticmethod
+    def algorithm(data):
+        return
+
+    def solveA(self, data):
+        stream = Stream()
+        stream.process(deque(data))
+        return stream.total_score
+
+    def solveB(self, data):
+        stream = Stream()
+        stream.process(deque(data))
+        return stream.size
+
+
+class KnotHash(list):
+    suffix = [17, 31, 73, 47, 23]
+
+    def __init__(self, size=256, rounds=64, use_suffix=True):
+        super().__init__(range(size))
+        self.rounds = rounds
+        self.use_suffix = use_suffix
+        self.index = 0
+        self.skip_size = 0
+
+    def apply(self, lengths):
+        if self.use_suffix:
+            lengths += self.suffix
+
+        for _ in range(self.rounds):
+            for length in lengths:
+                self.reverse_sublist(length)
+                self.index = self.index + length + self.skip_size
+                self.skip_size += 1
+
+    def reverse_sublist(self, length):
+        """
+        Reverse each specified sublist - wrap around is taken care of by overriding methods below to mod the index
+        """
+        for n, i in enumerate(range(self.index, self.index + length // 2), start=1):
+            self[i], self[self.index + length - n] = self[self.index + length - n], self[i]
+
+    def dense_hash(self, group_size=16):
+        """ Reduce each group of X bytes by xoring them together """
+        return [reduce(operator.xor, group) for group in zip(*[iter(self)] * group_size)]
+
+    def __str__(self):
+        return ''.join(f'{c:02x}' for c in self.dense_hash())
+
+    def __getitem__(self, index):
+        return super().__getitem__(index % len(self))
+
+    def __setitem__(self, index, value):
+        return super().__setitem__(index % len(self), value)
+
+
+class Puzzle10(Puzzle):
+    """ Day 10: Knot Hash """
+    @staticmethod
+    def algorithm(data):
+        return
+
+    def solveA(self, data):
+        knot = KnotHash(rounds=1, use_suffix=False)
+        knot.apply(list(map(int, data.split(','))))
+        return knot[0] * knot[1]
+
+    def solveB(self, data):
+        knot = KnotHash()
+        knot.apply(list(map(ord, data)))
+        return str(knot)
+
+
 '''
 class PuzzleN(Puzzle):
+    """ Day N: Name """
     @staticmethod
     def algorithm(data):
         return
