@@ -4,7 +4,7 @@ import argparse
 from collections import Counter, defaultdict, deque, namedtuple, OrderedDict
 import inspect
 from functools import reduce
-from itertools import combinations, count
+from itertools import chain, combinations, count, cycle
 import math
 from operator import itemgetter
 import operator
@@ -550,6 +550,76 @@ class Puzzle12(Puzzle):
     def solveB(self, data):
         groups = self.algorithm(data).all_groups()
         return len(groups)
+
+
+class Layer(object):
+    def __init__(self, depth, scanner_range, current_position=0, delta=1):
+        self.depth = depth
+        self.scanner_range = scanner_range
+        self.current_position = current_position
+        self.delta = delta
+
+    def proceed(self):
+        if self.delta == 1 and self.current_position == self.scanner_range - 1:
+            self.delta = -1
+        elif self.delta == -1 and self.current_position == 0:
+            self.delta = 1
+        self.current_position += self.delta
+
+    def clone(self):
+        return Layer(self.depth, self.scanner_range, self.current_position, self.delta)
+
+
+class Firewall(object):
+    def __init__(self, layers):
+        self.layers = layers
+
+    def proceed(self):
+        for layer in self.layers:
+            layer.proceed()
+
+    def traverse(self, fail_early=False):
+        severity = 0
+        for current_position in count():
+            for layer in self.layers:
+                if current_position == layer.depth and layer.current_position == 0:
+                    severity += layer.depth * layer.scanner_range
+                    if fail_early:
+                        return None
+            if current_position == self.layers[-1].depth:
+                return severity
+            self.proceed()
+
+    def clone(self):
+        return Firewall([layer.clone() for layer in self.layers])
+
+
+class Puzzle13(Puzzle):
+    """
+    Day 13: Packet Scanners
+
+    I have a feeling there's a faster way to do this by finding a starting value (N) for when the scanner is not at 0
+    for each layer in N picoseconds, instead of simulating the firewall after each picosecond...
+
+    Will take a look at it next time I'm doing these!
+    """
+    slow = True
+
+    @staticmethod
+    def algorithm(data):
+        matcher = re.compile(r'^(\d+): (\d+)$', re.M)
+        return Firewall([Layer(int(k), int(v)) for (k, v) in matcher.findall(data)])
+
+    def solveA(self, data):
+        firewall = self.algorithm(data)
+        return firewall.traverse()
+
+    def solveB(self, data):
+        firewall = self.algorithm(data)
+        for initial_delay in count(start=1):
+            firewall.proceed()
+            if firewall.clone().traverse(fail_early=True) is not None:
+                return initial_delay
 
 
 '''
