@@ -499,17 +499,58 @@ class HexGrid(object):
 class Puzzle11(Puzzle):
     """ Day 11: Hex Ed """
     @staticmethod
-    def travel(data):
+    def algorithm(data):
         hex_grid = HexGrid()
         for direction in data.split(','):
             hex_grid.move(direction)
         return hex_grid
 
     def solveA(self, data):
-        return self.travel(data).distance_from_origin()
+        return self.algorithm(data).distance_from_origin()
 
     def solveB(self, data):
-        return self.travel(data).furthest
+        return self.algorithm(data).furthest
+
+
+class Village(object):
+    """
+    Make Groups connected to a starting node, removing connected nodes from the available pool
+    Repeat until all nodes are exhausted
+    """
+    def __init__(self, programs):
+        self.programs = programs
+
+    def grouped(self, to):
+        group = {to}
+        unexplored = set(self.programs.pop(to))
+        while len(unexplored):
+            curr = unexplored.pop()
+            group.add(curr)
+            unexplored.update(self.programs.pop(curr, []))
+        return group
+
+    def all_groups(self):
+        groups = []
+        while self.programs:
+            groups.append(self.grouped(next(iter(self.programs.keys()))))
+        return groups
+
+
+class Puzzle12(Puzzle):
+    """ Day 12: Digital Plumber """
+    @staticmethod
+    def algorithm(data):
+        matcher = re.compile(r'^(\d+)(?: <-> ((?:(?:\d+)(?:, )?)*))?$', re.M)
+        programs = {pid: pids.split(', ') for pid, pids in (match.groups() for match in matcher.finditer(data))}
+        return Village(programs)
+
+    def solveA(self, data):
+        return len(self.algorithm(data).grouped('0'))
+
+    def solveB(self, data):
+        groups = self.algorithm(data).all_groups()
+        return len(groups)
+
 
 '''
 class PuzzleN(Puzzle):
