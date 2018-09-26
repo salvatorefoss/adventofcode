@@ -10,8 +10,10 @@ class Puzzle(object):
     slow = False
 
     def __init__(self):
+        print("Solutions for day{:02}".format(self.day))
         if type(self) == Puzzle:
             raise Exception("<Puzzle> must be subclassed.")
+        self.data = self.get_data()
 
     @property
     def day(self):
@@ -26,15 +28,13 @@ class Puzzle(object):
         return data
 
     def solve(self):
-        data = self.get_data()
-        print("Solutions for day{:02}".format(self.day))
         with Timer():
-            print("A: {}".format(self.solveA(data)))
+            print("A: {}".format(self.solve_a()))
         with Timer():
-            print("B: {}".format(self.solveB(data)))
+            print("B: {}".format(self.solve_b()))
 
-    def solveA(self, data):
+    def solve_a(self):
         raise NotImplementedError(".solveA() for day {:02} has not been implemented yet".format(self.day))
 
-    def solveB(self, data):
+    def solve_b(self):
         raise NotImplementedError(".solveB() for day {:02} has not been implemented yet".format(self.day))

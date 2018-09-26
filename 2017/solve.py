@@ -4,7 +4,7 @@ import argparse
 from collections import Counter, defaultdict, deque, namedtuple, OrderedDict
 import inspect
 from functools import reduce
-from itertools import chain, combinations, count, cycle
+from itertools import combinations, count
 import math
 from operator import itemgetter
 import operator
@@ -12,39 +12,40 @@ import re
 import sys
 
 from utils.puzzle import Puzzle
+from utils.timer import Timer
 
 
 class Puzzle01(Puzzle):
     """ Day 1: Inverse Captcha """
     @staticmethod
-    def algorithm(data):
+    def algorithm(pairs):
         """
         Not much to it, sum the numbers that have the matching pair
         """
-        return sum(int(a) for (a, b) in data if a == b)
+        return sum(int(a) for (a, b) in pairs if a == b)
 
-    def solveA(self, data):
+    def solve_a(self):
         """
         Pair each number with the number after it (cycled around)
         """
-        return self.algorithm(zip(data, data[1:] + data[:1]))
+        return self.algorithm(zip(self.data, self.data[1:] + self.data[:1]))
 
-    def solveB(self, data):
+    def solve_b(self):
         """
         Pair each number with the number half way around the list - only need to check first half, then double
         """
-        return 2 * self.algorithm(zip(data[len(data) // 2:], data[:len(data) // 2]))
+        return 2 * self.algorithm(zip(self.data[len(self.data) // 2:], self.data[:len(self.data) // 2]))
 
 
 class Puzzle02(Puzzle):
     """ Day 2: Corruption Checksum """
-    def solveA(self, data):
+    def solve_a(self):
         """ Sum the difference between the max and min of each line """
-        return sum(max(values) - min(values) for values in ([int(value) for value in line.split()] for line in data.splitlines()))
+        return sum(max(values) - min(values) for values in ([int(value) for value in line.split()] for line in self.data.splitlines()))
 
-    def solveB(self, data):
+    def solve_b(self):
         """ Generate all pairings of the nubmers on each line, find the evenly divisible pair, then use their division for the sum """
-        return sum(max(a, b) // min(a, b) for line in data.splitlines() for (a, b) in combinations(map(int, line.split()), 2) if not max(a, b) % min(a, b))
+        return sum(max(a, b) // min(a, b) for line in self.data.splitlines() for (a, b) in combinations(map(int, line.split()), 2) if not max(a, b) % min(a, b))
 
 
 class A141481(object):
@@ -93,12 +94,12 @@ class A141481(object):
 
 class Puzzle03(Puzzle):
     """ Day 3: Spiral Memory """
-    def solveA(self, data):
+    def solve_a(self):
         """
         Calculate the size of the square:
         The number of steps is the number of layers + how many steps to the centre of the side
         """
-        n = int(data)
+        n = int(self.data)
         width = int(math.ceil(math.sqrt(n)))
         if not width % 2:
             width += 1
@@ -109,46 +110,45 @@ class Puzzle03(Puzzle):
                 distance_to_centre_of_side = abs(n - (corner - width // 2))
                 return layers + distance_to_centre_of_side
 
-    def solveB(self, data):
+    def solve_b(self):
         """
         Don't know how to do this without generating the numbers. Use the generator class I wrote above
         """
-        return next(v for v in A141481() if v > int(data))
+        return next(v for v in A141481() if v > int(self.data))
 
 
 class Puzzle04(Puzzle):
     """ Day 4: High-entropy Passphrases"""
     @staticmethod
-    def algorithm(data):
+    def algorithm(pairs):
         """
         Return the number of lines in which the words and the computed words are equal (none are 'duplicates')
         """
-        return sum(1 for (words, checked_words) in data if len(words) == len(set(checked_words)))
+        return sum(1 for (words, checked_words) in pairs if len(words) == len(set(checked_words)))
 
-    def solveA(self, data):
+    def solve_a(self):
         """
         Pretty simple, just need the words themselves
         """
-        return self.algorithm((line.split(), line.split()) for line in data.splitlines())
+        return self.algorithm((line.split(), line.split()) for line in self.data.splitlines())
 
-    def solveB(self, data):
+    def solve_b(self):
         """
         Sort the letters in each of the words
         """
         def get_sorted_words(line):
             return [''.join(sorted(word)) for word in line.split()]
-        return self.algorithm((line.split(), get_sorted_words(line)) for line in data.splitlines())
+        return self.algorithm((line.split(), get_sorted_words(line)) for line in self.data.splitlines())
 
 
 class Puzzle05(Puzzle):
     """ Day 5: A Maze of Twisty Trampolines, All Alike """
-    @staticmethod
-    def algorithm(data, func):
+    def algorithm(self, func):
         """
         Keep all the offsets in a list, jump around the list until you try to jump outside of the bounds of the list
         Perform the func() on the offset you just jumped from to change its offset value.
         """
-        jump_table = [int(line) for line in data.splitlines()]
+        jump_table = [int(line) for line in self.data.splitlines()]
         index = 0
         for n in count():
             try:
@@ -156,13 +156,13 @@ class Puzzle05(Puzzle):
             except IndexError:
                 return n
 
-    def solveA(self, data):
+    def solve_a(self):
         """ Calculate the jumps where the jump is increased by one after performing it """
-        return self.algorithm(data, lambda offset: offset + 1)
+        return self.algorithm(lambda offset: offset + 1)
 
-    def solveB(self, data):
+    def solve_b(self):
         """ Calculate the jumps where the jump is increased by 1 if it was <3, otherwise decreased by 1 """
-        return self.algorithm(data, lambda offset: offset + 1 if offset < 3 else offset - 1)
+        return self.algorithm(lambda offset: offset + 1 if offset < 3 else offset - 1)
 
 
 class MemoryAllocation(object):
@@ -210,15 +210,18 @@ class MemoryAllocation(object):
 
 class Puzzle06(Puzzle):
     """ Day 6: Memory Reallocation """
-    def solveA(self, data):
-        """ Create the Memory Allocation Table, trigger the infinite loop and return the number of redistributions """
-        memory_allocation = MemoryAllocation(data)
-        return memory_allocation.trigger_infinite_loop()[0]
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            self.memory_allocation = MemoryAllocation(self.data)
 
-    def solveB(self, data):
+    def solve_a(self):
+        """ Create the Memory Allocation Table, trigger the infinite loop and return the number of redistributions """
+        return self.memory_allocation.trigger_infinite_loop()[0]
+
+    def solve_b(self):
         """ Create the Memory Allocation Table, trigger the infinite loop and return when you last saw the state we're in """
-        memory_allocation = MemoryAllocation(data)
-        return memory_allocation.trigger_infinite_loop()[1]
+        return self.memory_allocation.trigger_infinite_loop()[1]
 
 
 class Program(object):
@@ -262,25 +265,24 @@ class ProgramTower(object):
 
 class Puzzle07(Puzzle):
     """ Day 7: Recursive Circus """
-    @staticmethod
-    def algorithm(data):
-        """ Create a dictionary of programs keyed by their name """
-        matcher = re.compile(r'^([a-z]+)\s\((\d+)\)(?: -> ((?:(?:\w+)(?:, )?)*))?$', re.M)
-        programs = {program.name: program for program in (Program(*match.groups()) for match in matcher.finditer(data))}
-        return ProgramTower(programs)
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            """ Create a dictionary of programs keyed by their name """
+            matcher = re.compile(r'^([a-z]+)\s\((\d+)\)(?: -> ((?:(?:\w+)(?:, )?)*))?$', re.M)
+            programs = {program.name: program for program in (Program(*match.groups()) for match in matcher.finditer(self.data))}
+            self.program_tower = ProgramTower(programs)
 
-    def solveA(self, data):
+    def solve_a(self):
         """ Create the ProgramTower and return the name of the root """
-        program_tower = self.algorithm(data)
-        return program_tower.program.name
+        return self.program_tower.program.name
 
-    def solveB(self, data):
+    def solve_b(self):
         """
         Create the Program Tower and recurse down through the unbalanced towers then return the difference
         of its weight and the difference between the unbalanced towers
         """
-        program_tower = self.algorithm(data)
-        return program_tower.find_wrong_weight()
+        return self.program_tower.find_wrong_weight()
 
 
 class Instruction(object):
@@ -312,26 +314,25 @@ class Instruction(object):
 
 class Puzzle08(Puzzle):
     """ Day 8: I Heard You Like Registers """
-    @staticmethod
-    def algorithm(data):
-        """
-        The registers are defined as a default dictionary which initialises them to 0
-        The instructions are then applied to the registers
-        """
-        matcher = re.compile(r'(\w+) (inc|dec) (-?\d+) if (\w+) (.*?) (-?\d+)')
-        instructions = [Instruction(*match.groups()) for match in matcher.finditer(data)]
-        registers = defaultdict(int)
-        return registers, max(instruction.apply(registers) for instruction in instructions)
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            """
+            The registers are defined as a default dictionary which initialises them to 0
+            The instructions are then applied to the registers
+            """
+            matcher = re.compile(r'(\w+) (inc|dec) (-?\d+) if (\w+) (.*?) (-?\d+)')
+            instructions = [Instruction(*match.groups()) for match in matcher.finditer(self.data)]
+            self.registers = defaultdict(int)
+            self.max_value = max(instruction.apply(self.registers) for instruction in instructions)
 
-    def solveA(self, data):
+    def solve_a(self):
         """ Return the largest value in any of the registers after all the instructions have been applied """
-        registers, max_value = self.algorithm(data)
-        return Counter(registers).most_common(1)[0][1]
+        return Counter(self.registers).most_common(1)[0][1]
 
-    def solveB(self, data):
+    def solve_b(self):
         """ The max value is kept track of by returning the register value after setting it """
-        registers, max_value = self.algorithm(data)
-        return max_value
+        return self.max_value
 
 
 class Stream(object):
@@ -400,30 +401,30 @@ class Group(Stream):
 
 class Puzzle09(Puzzle):
     """ Day 9: Stream Processing """
-    @staticmethod
-    def algorithm(data):
-        return
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            self.stream = Stream()
+            self.stream.process(deque(self.data))
 
-    def solveA(self, data):
-        stream = Stream()
-        stream.process(deque(data))
-        return stream.total_score
+    def solve_a(self):
+        return self.stream.total_score
 
-    def solveB(self, data):
-        stream = Stream()
-        stream.process(deque(data))
-        return stream.size
+    def solve_b(self):
+        return self.stream.size
 
 
 class KnotHash(list):
     suffix = [17, 31, 73, 47, 23]
 
-    def __init__(self, size=256, rounds=64, use_suffix=True):
+    def __init__(self, lengths=None, size=256, rounds=64, use_suffix=True):
         super().__init__(range(size))
         self.rounds = rounds
         self.use_suffix = use_suffix
         self.index = 0
         self.skip_size = 0
+        if lengths:
+            self.apply(lengths)
 
     def apply(self, lengths):
         if self.use_suffix:
@@ -458,18 +459,12 @@ class KnotHash(list):
 
 class Puzzle10(Puzzle):
     """ Day 10: Knot Hash """
-    @staticmethod
-    def algorithm(data):
-        return
-
-    def solveA(self, data):
-        knot = KnotHash(rounds=1, use_suffix=False)
-        knot.apply(list(map(int, data.split(','))))
+    def solve_a(self):
+        knot = KnotHash(list(map(int, self.data.split(','))), rounds=1, use_suffix=False)
         return knot[0] * knot[1]
 
-    def solveB(self, data):
-        knot = KnotHash()
-        knot.apply(list(map(ord, data)))
+    def solve_b(self):
+        knot = KnotHash(list(map(ord, self.data)))
         return str(knot)
 
 
@@ -498,18 +493,18 @@ class HexGrid(object):
 
 class Puzzle11(Puzzle):
     """ Day 11: Hex Ed """
-    @staticmethod
-    def algorithm(data):
-        hex_grid = HexGrid()
-        for direction in data.split(','):
-            hex_grid.move(direction)
-        return hex_grid
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            self.hex_grid = HexGrid()
+            for direction in self.data.split(','):
+                self.hex_grid.move(direction)
 
-    def solveA(self, data):
-        return self.algorithm(data).distance_from_origin()
+    def solve_a(self):
+        return self.hex_grid.distance_from_origin()
 
-    def solveB(self, data):
-        return self.algorithm(data).furthest
+    def solve_b(self):
+        return self.hex_grid.furthest
 
 
 class Village(object):
@@ -519,9 +514,11 @@ class Village(object):
     """
     def __init__(self, programs):
         self.programs = programs
+        self.groups = []
 
     def grouped(self, to):
         group = {to}
+        self.groups.append(group)
         unexplored = set(self.programs.pop(to))
         while len(unexplored):
             curr = unexplored.pop()
@@ -530,26 +527,25 @@ class Village(object):
         return group
 
     def all_groups(self):
-        groups = []
         while self.programs:
-            groups.append(self.grouped(next(iter(self.programs.keys()))))
-        return groups
+            self.grouped(next(iter(self.programs.keys())))
+        return self.groups
 
 
 class Puzzle12(Puzzle):
     """ Day 12: Digital Plumber """
-    @staticmethod
-    def algorithm(data):
-        matcher = re.compile(r'^(\d+)(?: <-> ((?:(?:\d+)(?:, )?)*))?$', re.M)
-        programs = {pid: pids.split(', ') for pid, pids in (match.groups() for match in matcher.finditer(data))}
-        return Village(programs)
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            matcher = re.compile(r'^(\d+)(?: <-> ((?:(?:\d+)(?:, )?)*))?$', re.M)
+            programs = {pid: pids.split(', ') for pid, pids in (match.groups() for match in matcher.finditer(self.data))}
+            self.village = Village(programs)
 
-    def solveA(self, data):
-        return len(self.algorithm(data).grouped('0'))
+    def solve_a(self):
+        return len(self.village.grouped('0'))
 
-    def solveB(self, data):
-        groups = self.algorithm(data).all_groups()
-        return len(groups)
+    def solve_b(self):
+        return len(self.village.all_groups())
 
 
 class Layer(object):
@@ -605,34 +601,131 @@ class Puzzle13(Puzzle):
     """
     slow = True
 
-    @staticmethod
-    def algorithm(data):
-        matcher = re.compile(r'^(\d+): (\d+)$', re.M)
-        return Firewall([Layer(int(k), int(v)) for (k, v) in matcher.findall(data)])
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            matcher = re.compile(r'^(\d+): (\d+)$', re.M)
+            self.firewall = Firewall([Layer(int(k), int(v)) for (k, v) in matcher.findall(self.data)])
 
-    def solveA(self, data):
-        firewall = self.algorithm(data)
-        return firewall.traverse()
+    def solve_a(self):
+        return self.firewall.clone().traverse()
 
-    def solveB(self, data):
-        firewall = self.algorithm(data)
+    def solve_b(self):
         for initial_delay in count(start=1):
-            firewall.proceed()
-            if firewall.clone().traverse(fail_early=True) is not None:
+            self.firewall.proceed()
+            if self.firewall.clone().traverse(fail_early=True) is not None:
                 return initial_delay
+
+
+class Bit(object):
+    def __init__(self, row, col, disk, bit):
+        self.row = row
+        self.col = col
+        self.disk = disk
+        self.bit = bit == '1'
+        self.label = 0
+
+    def first_pass(self):
+        if not self.bit:
+            return
+        a, b = 0, 0
+        if not self.row == 0 and not self.col == 0:
+            a, b = self.disk.bits[self.row - 1][self.col].label, self.disk.bits[self.row][self.col - 1].label
+        elif self.row == 0:
+            a = self.disk.bits[self.row][self.col-1].label
+        elif self.col == 0:
+            b = self.disk.bits[self.row-1][self.col].label
+
+        if a and b:
+            self.label = self.disk.associate(a, b)
+        elif not a and not b:
+            self.label = next(self.disk.label_counter)
+        else:
+            self.label = a if a else b
+
+    def second_pass(self):
+        while self.label in self.disk.associated_labels:
+            self.label = min(self.disk.associated_labels[self.label])
+
+
+class Disk(object):
+    """
+    So this uses the two-pass Connected-component labelling algorithm...
+    Not worth commenting since it's on the wiki page, but I've stripped the code down to as little as I can.
+    https://en.wikipedia.org/wiki/Connected-component_labeling
+    """
+    def __init__(self, key, size=128):
+        self.bits = []
+        self.label_counter = count(start=1)
+        self.associated_labels = defaultdict(set)
+        for row, kh in enumerate(KnotHash(list(map(ord, f'{key}-{n}'))) for n in range(size)):
+            self.bits.append([Bit(row, col, self, bit) for col, bit in enumerate(bin(int(str(kh), 16))[2:].zfill(size))])
+
+    def associations_of(self, label):
+        s = {label}
+        for a in self.associated_labels[label]:
+            s.update(self.associations_of(a))
+        return s
+
+    def associate(self, a, b):
+        cs = self.associations_of(a).union(self.associations_of(b))
+        a = min(cs)
+        self.associated_labels.pop(a, None)
+        for l in filter(lambda x: not x == a, cs):
+            self.associated_labels[l].add(a)
+        return a
+
+    @property
+    def used(self):
+        return sum(1 for bits in self.bits for bit in bits if bit.bit)
+
+    @property
+    def regions(self):
+        return len({bit.label for bits in self.bits for bit in bits if not bit.label == 0})
+
+    def groups(self):
+        for row in self.bits:
+            for bit in row:
+                bit.first_pass()
+
+        for row in self.bits:
+            for bit in row:
+                bit.second_pass()
+
+
+class Puzzle14(Puzzle):
+    """ Day 14: Disk Defragmentation """
+    slow = True
+
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            self.disk = Disk(self.data)
+
+    def solve_a(self):
+        return self.disk.used
+
+    def solve_b(self):
+        self.disk.groups()
+        return self.disk.regions
 
 
 '''
 class PuzzleN(Puzzle):
     """ Day N: Name """
-    @staticmethod
+    def __init__(self):
+        super().__init__()
+        with Timer():
+            return
+    
+    @staticmethod # or not, depends on self.
     def algorithm(data):
         return
 
-    def solveA(self, data):
+    def solve_a(self):
         return 
 
-    def solveB(self, data):
+    def solve_b(self):
         return
 '''
 
@@ -650,9 +743,9 @@ if __name__ == '__main__':
     if args.day:
         solutions['Puzzle{:02}'.format(args.day)]().solve()
     elif args.all:
-        for solution in solutions.values():
+        for puzzle, solution in solutions.items():
             if args.skipslow and solution.slow:
-                print("Skipping Puzzle{:02} because it is a slow puzzle".format(solution.day))
+                print("Skipping {} because it is a slow puzzle".format(puzzle))
                 continue
             solution().solve()
     else:
