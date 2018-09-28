@@ -4,7 +4,7 @@ import argparse
 from collections import Counter, defaultdict, deque, namedtuple, OrderedDict
 import inspect
 from functools import reduce
-from itertools import combinations, count
+from itertools import combinations, count, islice
 import math
 from operator import itemgetter
 import operator
@@ -708,6 +708,49 @@ class Puzzle14(Puzzle):
     def solve_b(self):
         self.disk.groups()
         return self.disk.regions
+
+
+class DuelingGenerator(object):
+    def __init__(self, starting_value, factor, multiple_of=None):
+        self.value = starting_value
+        self.factor = factor
+        self.multiple_of = multiple_of
+
+    def __iter__(self):
+        while True:
+            self.value = (self.value * self.factor) % 2147483647
+            while self.multiple_of and not self.value % self.multiple_of == 0:
+                self.value = (self.value * self.factor) % 2147483647
+            yield bin(self.value)[2:].zfill(16)[-16:]
+
+
+class GeneratorA(DuelingGenerator):
+    def __init__(self, starting_value, multiple_of=None):
+        super().__init__(starting_value, 16807, multiple_of)
+
+
+class GeneratorB(DuelingGenerator):
+    def __init__(self, starting_value, multiple_of=None):
+        super().__init__(starting_value, 48271, multiple_of)
+
+
+class Puzzle15(Puzzle):
+    """
+    Day 14: Dueling Generators
+
+    There has to be a faster way to do part a, will revisit in the future.
+    """
+    slow = True
+
+    def solve_a(self):
+        generator_a = GeneratorA(int(re.compile('A starts with (\d+)').search(self.data).group(1)))
+        generator_b = GeneratorB(int(re.compile('B starts with (\d+)').search(self.data).group(1)))
+        return sum(1 for x, y in islice(zip(generator_a, generator_b), 40000000) if x == y)
+
+    def solve_b(self):
+        generator_a = GeneratorA(int(re.compile('A starts with (\d+)').search(self.data).group(1)), 4)
+        generator_b = GeneratorB(int(re.compile('B starts with (\d+)').search(self.data).group(1)), 8)
+        return sum(1 for x, y in islice(zip(generator_a, generator_b), 5000000) if x == y)
 
 
 '''
