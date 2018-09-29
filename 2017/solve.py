@@ -4,11 +4,12 @@ import argparse
 from collections import Counter, defaultdict, deque, namedtuple, OrderedDict
 import inspect
 from functools import reduce
-from itertools import combinations, count, islice
+from itertools import combinations, count, islice, takewhile
 import math
 from operator import itemgetter
 import operator
 import re
+from string import ascii_lowercase
 import sys
 
 from utils.puzzle import Puzzle
@@ -736,7 +737,7 @@ class GeneratorB(DuelingGenerator):
 
 class Puzzle15(Puzzle):
     """
-    Day 14: Dueling Generators
+    Day 15: Dueling Generators
 
     There has to be a faster way to do part a, will revisit in the future.
     """
@@ -751,6 +752,56 @@ class Puzzle15(Puzzle):
         generator_a = GeneratorA(int(re.compile('A starts with (\d+)').search(self.data).group(1)), 4)
         generator_b = GeneratorB(int(re.compile('B starts with (\d+)').search(self.data).group(1)), 8)
         return sum(1 for x, y in islice(zip(generator_a, generator_b), 5000000) if x == y)
+
+
+class Dance(object):
+    def __init__(self, dance_moves, num_dancers=16):
+        self.dancers = deque(ascii_lowercase[:num_dancers])
+        self.dance_moves = list(map(self.build_dance_move, dance_moves.split(',')))
+        self.cycle = [tuple(self.dancers)]
+
+    def apply(self):
+        [dance_move() for dance_move in self.dance_moves]
+        return self.dancers
+
+    def build_cycle(self):
+        self.cycle.append(tuple(self.dancers))
+        while tuple(self.dancers) != self.cycle[0]:
+            self.cycle.append(tuple(self.apply()))
+        self.cycle.pop(-1)
+
+    def build_dance_move(self, dance_move):
+        return {
+            's': lambda: self.spin(int(dance_move[1:])),
+            'x': lambda: self.exchange(*map(int, dance_move[1:].split('/'))),
+            'p': lambda: self.exchange(*map(self.dancers.index, dance_move[1:].split('/')))
+        }[dance_move[0]]
+
+    def spin(self, size):
+        self.dancers.rotate(size % len(self.dancers))
+
+    def exchange(self, a, b):
+        self.dancers[a], self.dancers[b] = self.dancers[b], self.dancers[a]
+
+
+class Puzzle16(Puzzle):
+    """
+    Day 16: Permutation Promenade
+
+    Part 2 banks on the idea that eventually the dancers return to their original position after some amount of dancing
+    When they do, you have a cycle length, take the modulo of a billion and the cycle length, which is effectively
+    how many times the dancers dance to get into the resulting position.
+    """
+    def __init__(self):
+        super().__init__()
+        self.dance = Dance(self.data)
+
+    def solve_a(self):
+        return ''.join(self.dance.apply())
+
+    def solve_b(self):
+        self.dance.build_cycle()
+        return ''.join(self.dance.cycle[1000000000 % len(self.dance.cycle)])
 
 
 '''
